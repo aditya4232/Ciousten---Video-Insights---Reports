@@ -3,25 +3,15 @@ FastAPI main application.
 Ciousten - Video Insights & Reports
 Made by Aditya Shenvi @2025 (www.adityacuz.dev)
 """
-
+from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
-from app.db import init_db
-from app.api.routes import upload, segment, analyze, reports, projects
 from app.config import settings
-from pathlib import Path
-
+from app.api.routes import upload, projects, segment, analyze, reports, sample
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager."""
-    # Startup
-    print("🚀 Starting Ciousten backend...")
-    await init_db()
-    print("✓ Database initialized")
-    
     # Ensure directories exist
     Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
     Path(settings.reports_dir).mkdir(parents=True, exist_ok=True)
@@ -49,17 +39,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Include Routers
 app.include_router(upload.router, prefix="/api", tags=["Upload"])
+app.include_router(projects.router, prefix="/api", tags=["Projects"])
 app.include_router(segment.router, prefix="/api", tags=["Segmentation"])
 app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
 app.include_router(reports.router, prefix="/api", tags=["Reports"])
-app.include_router(projects.router, prefix="/api", tags=["Projects"])
-
+app.include_router(sample.router, prefix="/api", tags=["Sample"])
 
 @app.get("/")
 async def root():
-    """Root endpoint."""
     return {
         "message": "Ciousten - Video Insights & Reports API",
         "version": "1.0.0",

@@ -74,6 +74,8 @@ export default function DashboardPage() {
             icon: Upload,
             href: "/annotate",
             color: "from-blue-500 to-cyan-500",
+            borderColor: "hover:border-blue-500",
+            hoverText: "group-hover:text-blue-600 dark:group-hover:text-blue-400",
         },
         {
             title: "View Analytics",
@@ -81,6 +83,8 @@ export default function DashboardPage() {
             icon: BarChart3,
             href: "/analyze",
             color: "from-purple-500 to-pink-500",
+            borderColor: "hover:border-purple-500",
+            hoverText: "group-hover:text-purple-600 dark:group-hover:text-purple-400",
         },
         {
             title: "Generate Reports",
@@ -88,6 +92,8 @@ export default function DashboardPage() {
             icon: FileText,
             href: "/reports",
             color: "from-orange-500 to-red-500",
+            borderColor: "hover:border-orange-500",
+            hoverText: "group-hover:text-orange-600 dark:group-hover:text-orange-400",
         },
     ];
 
@@ -192,19 +198,19 @@ export default function DashboardPage() {
                                     transition={{ delay: index * 0.1 + 0.4 }}
                                     onClick={() => router.push(action.href)}
                                 >
-                                    <Card className="group cursor-pointer hover:shadow-xl transition-all duration-300 overflow-hidden">
-                                        <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                                    <Card className={`group cursor-pointer hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-transparent ${action.borderColor}`}>
+                                        <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
                                         <CardHeader>
-                                            <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center mb-4`}>
+                                            <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                                                 <Icon className="h-6 w-6 text-white" />
                                             </div>
-                                            <CardTitle className="group-hover:text-primary transition-colors">
+                                            <CardTitle className={`transition-colors duration-300 ${action.hoverText}`}>
                                                 {action.title}
                                             </CardTitle>
                                             <CardDescription>{action.description}</CardDescription>
                                         </CardHeader>
                                         <CardContent>
-                                            <Button variant="ghost" className="group-hover:translate-x-1 transition-transform">
+                                            <Button variant="ghost" className="group-hover:translate-x-2 transition-transform duration-300 p-0 hover:bg-transparent">
                                                 Get Started
                                                 <ArrowRight className="ml-2 h-4 w-4" />
                                             </Button>

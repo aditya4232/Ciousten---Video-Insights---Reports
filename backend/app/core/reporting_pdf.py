@@ -108,6 +108,7 @@ def generate_pdf_report(
         ["Metric", "Value"],
         ["Total Frames Analyzed", str(stats.get('total_frames', 0))],
         ["Total Objects Detected", str(stats.get('total_objects', 0))],
+        ["Unique Objects Tracked", str(stats.get('unique_objects', 'N/A'))],
         ["Average Objects per Frame", f"{stats.get('avg_objects_per_frame', 0):.2f}"],
         ["Processing Time", f"{stats.get('processing_time_seconds', 0):.1f} seconds"]
     ]

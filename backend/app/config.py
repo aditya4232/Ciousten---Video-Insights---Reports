@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     # OpenRouter API
     openrouter_api_key: str
-    openrouter_default_model: str = "deepseek/deepseek-chat-free"
+    openrouter_default_model: str = "meta-llama/llama-3.2-11b-vision-instruct:free"
     openrouter_site_url: str = "https://ciousten.adityacuz.dev"
     openrouter_app_name: str = "Ciousten"
     

@@ -1,15 +1,7 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/loading-skeleton";
 import { useToast } from "@/components/ui/toast";
 import { api, Project, getErrorMessage } from "@/lib/api";
-import { Brain, Loader2, CheckCircle2, AlertCircle, Inbox, Settings2 } from "lucide-react";
+import { Brain, Loader2, CheckCircle2, AlertCircle, Inbox, Settings2, Video } from "lucide-react";
 import { AnomalyTimeline } from "@/components/AnomalyTimeline";
 import { ActivityTrack } from "@/components/ActivityTrack";
 
@@ -21,7 +13,7 @@ export default function AnalyzePage() {
     const [selectedProject, setSelectedProject] = useState("");
     const [analysisType, setAnalysisType] = useState("generic");
     const [mode, setMode] = useState("generic");
-    const [model, setModel] = useState("deepseek/deepseek-chat-free");
+    const [model, setModel] = useState("meta-llama/llama-3.2-11b-vision-instruct:free");
     const [analyzing, setAnalyzing] = useState(false);
     const [analysis, setAnalysis] = useState<any>(null);
     const [totalFrames, setTotalFrames] = useState(0);
@@ -86,6 +78,15 @@ export default function AnalyzePage() {
             });
         } finally {
             setAnalyzing(false);
+        }
+    };
+
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    const handleSeek = (timestamp: number) => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = timestamp;
+            videoRef.current.play();
         }
     };
 
@@ -158,9 +159,9 @@ export default function AnalyzePage() {
                                             onChange={(e) => setModel(e.target.value)}
                                             className="w-full px-3 py-2 border rounded-md bg-background"
                                         >
-                                            <option value="deepseek/deepseek-chat-free">DeepSeek Chat (Free)</option>
-                                            <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (Free)</option>
-                                            <option value="google/gemini-flash-1.5">Gemini Flash 1.5</option>
+                                            <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (Free)</option>
+                                            <option value="meta-llama/llama-3.2-11b-vision-instruct:free">Llama 3.2 11B (Free)</option>
+                                            <option value="deepseek/deepseek-r1:free">DeepSeek R1 (Free)</option>
                                         </select>
                                     </div>
                                 </div>
@@ -200,10 +201,33 @@ export default function AnalyzePage() {
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 {/* Advanced Visualizations */}
                                 <div className="grid gap-6">
+                                    {/* Video Preview */}
+                                    {projects.find(p => p.project_id === selectedProject)?.annotated_video_path && (
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle className="flex items-center gap-2">
+                                                    <Video className="h-5 w-5" />
+                                                    Tracked Video Preview
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <video
+                                                    ref={videoRef}
+                                                    controls
+                                                    className="w-full rounded-lg border bg-black aspect-video"
+                                                    src={`http://localhost:8000${projects.find(p => p.project_id === selectedProject)?.annotated_video_path}`}
+                                                >
+                                                    Your browser does not support the video tag.
+                                                </video>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+
                                     {analysis.anomaly_events && analysis.anomaly_events.length > 0 && (
                                         <AnomalyTimeline
                                             anomalies={analysis.anomaly_events}
                                             totalFrames={totalFrames || 1000}
+                                            onSeek={handleSeek}
                                         />
                                     )}
 
@@ -211,6 +235,7 @@ export default function AnalyzePage() {
                                         <ActivityTrack
                                             activities={analysis.activities}
                                             totalFrames={totalFrames || 1000}
+                                            onSeek={handleSeek}
                                         />
                                     )}
                                 </div>

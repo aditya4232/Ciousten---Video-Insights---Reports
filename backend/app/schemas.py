@@ -57,9 +57,13 @@ class SegmentationStats(BaseModel):
     """Statistics from segmentation process."""
     total_frames: int
     total_objects: int
+    unique_objects: int = 0
     objects_per_class: Dict[str, int]
     avg_objects_per_frame: float
+    avg_objects_per_frame: float
     processing_time_seconds: float
+    progress: int = 0
+    status_message: str = ""
 
 
 class SegmentationResponse(BaseModel):
@@ -71,18 +75,18 @@ class SegmentationResponse(BaseModel):
 
 class DatasetPlan(BaseModel):
     """Plan for creating a dataset."""
-    recommended_classes: List[str]
-    train_split: float
-    val_split: float
-    test_split: float
-    notes: str
+    recommended_classes: List[str] = []
+    train_split: float = 0.7
+    val_split: float = 0.15
+    test_split: float = 0.15
+    notes: str = ""
 
 
 class KPI(BaseModel):
     """Key Performance Indicator."""
     name: str
     value: float
-    unit: str
+    unit: str = ""
 
 
 class Anomaly(BaseModel):
@@ -90,7 +94,7 @@ class Anomaly(BaseModel):
     frame_index: int
     timestamp: float
     description: str
-    severity: float = Field(..., description="0.0 to 1.0")
+    severity: float = Field(0.0, description="0.0 to 1.0")
 
 
 class Activity(BaseModel):
@@ -98,19 +102,19 @@ class Activity(BaseModel):
     start_frame: int
     end_frame: int
     label: str
-    confidence: float
+    confidence: float = 0.0
 
 
 class DatasetCard(BaseModel):
     """Auto-generated dataset card."""
-    title: str
-    description: str
-    intended_use: str
-    labels: List[str]
-    collection_process: str
-    risks: str
-    limitations: str
-    ethical_considerations: str
+    title: str = "Untitled Dataset"
+    description: str = ""
+    intended_use: str = ""
+    labels: List[str] = []
+    collection_process: str = ""
+    risks: str = ""
+    limitations: str = ""
+    ethical_considerations: str = ""
 
 
 class PluginStatus(BaseModel):
@@ -129,19 +133,19 @@ class PluginResult(BaseModel):
 class AnalysisRequest(BaseModel):
     """Request for AI analysis."""
     analysis_type: AnalysisType = AnalysisType.GENERIC
-    model: str = "deepseek/deepseek-chat-free"
+    model: str = "google/gemini-2.0-flash-exp:free"
     mode: str = "generic"  # traffic, retail, security, generic
 
 
 class AnalysisResult(BaseModel):
     """AI analysis result."""
-    summary: str
-    key_findings: List[str]
-    anomalies: List[str]  # Text summary of anomalies
+    summary: str = "No summary available"
+    key_findings: List[str] = []
+    anomalies: List[str] = []  # Text summary of anomalies
     anomaly_events: List[Anomaly] = [] # Structured anomalies
     activities: List[Activity] = []
-    dataset_plan: DatasetPlan
-    kpis: List[KPI]
+    dataset_plan: Optional[DatasetPlan] = None
+    kpis: List[KPI] = []
     mode: str = "generic"
 
 
@@ -173,3 +177,4 @@ class ProjectSummary(BaseModel):
     has_reports: bool
     excel_path: Optional[str] = None
     pdf_path: Optional[str] = None
+    annotated_video_path: Optional[str] = None

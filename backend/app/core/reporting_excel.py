@@ -83,10 +83,12 @@ def _create_overview_sheet(wb, project_id, project_data, segmentation_data, anal
     ws['B10'] = stats.get('total_frames', 0)
     ws['A11'] = "Total Objects:"
     ws['B11'] = stats.get('total_objects', 0)
-    ws['A12'] = "Avg Objects/Frame:"
-    ws['B12'] = round(stats.get('avg_objects_per_frame', 0), 2)
-    ws['A13'] = "Processing Time:"
-    ws['B13'] = f"{stats.get('processing_time_seconds', 0):.1f}s"
+    ws['A12'] = "Unique Objects:"
+    ws['B12'] = stats.get('unique_objects', 'N/A')
+    ws['A13'] = "Avg Objects/Frame:"
+    ws['B13'] = round(stats.get('avg_objects_per_frame', 0), 2)
+    ws['A14'] = "Processing Time:"
+    ws['B14'] = f"{stats.get('processing_time_seconds', 0):.1f}s"
     
     # Objects per class
     ws['A15'] = "Objects by Class"

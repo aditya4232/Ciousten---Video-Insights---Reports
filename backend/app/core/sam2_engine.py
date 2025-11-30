@@ -92,47 +92,46 @@ class SAM2Engine:
     def segment_objects(
         self,
         image: np.ndarray,
-        detections: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        detections: Any  # sv.Detections
+    ) -> Any:
         """
         Segment objects using SAM2 based on YOLO detections.
         
         Args:
             image: Input image (RGB format)
-            detections: List of YOLO detections with bboxes
+            detections: supervision.Detections object
         
         Returns:
-            List of detections with added mask information
+            supervision.Detections object with masks
         """
         if not self.model_loaded:
             self.load_model()
         
-        # If SAM2 is not available, return detections as-is
-        if not self._sam2_available or self.predictor is None:
+        # If SAM2 is not available or no detections, return as-is
+        if not self._sam2_available or self.predictor is None or len(detections) == 0:
             return detections
         
         try:
             # Set image for SAM2
             self.predictor.set_image(image)
             
-            # Process each detection
-            for i, det in enumerate(detections):
-                bbox = det['bbox']
-                
-                # Convert bbox to SAM2 format [x1, y1, x2, y2]
-                box_prompt = np.array(bbox)
-                
-                # Predict mask
-                masks, scores, _ = self.predictor.predict(
-                    box=box_prompt,
-                    multimask_output=False
-                )
-                
-                # Add mask to detection (store as boolean array)
-                if len(masks) > 0:
-                    det['mask'] = masks[0]  # Use first (and only) mask
-                    det['mask_score'] = float(scores[0])
-        
+            # Get boxes from detections (xyxy)
+            boxes = detections.xyxy
+            
+            # Predict masks for all boxes at once (faster)
+            # SAM2 predictor can take a batch of boxes
+            masks, scores, _ = self.predictor.predict(
+                box=boxes,
+                multimask_output=False
+            )
+            
+            # masks shape: (N, 1, H, W) -> need (N, H, W)
+            if masks.ndim == 4:
+                masks = masks.squeeze(1)
+            
+            # Update detections with masks
+            detections.mask = masks.astype(bool)
+            
         except Exception as e:
             warnings.warn(f"SAM2 segmentation failed: {e}")
         

@@ -32,7 +32,7 @@ export function ModernNavigation() {
                             <div className="absolute inset-0 bg-primary/20 blur-xl group-hover:bg-primary/30 transition-all" />
                         </div>
                         <span className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-                            Ciousten
+                            Ciousten V2
                         </span>
                     </Link>
 

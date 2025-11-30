@@ -1,57 +1,51 @@
 """
-YOLO detection engine wrapper using Ultralytics.
-CPU-optimized for lightweight object detection.
+YOLO detection engine wrapper using Ultralytics and Supervision.
 """
 
 from ultralytics import YOLO
-from typing import List, Dict, Any
+import supervision as sv
 import numpy as np
+from typing import List, Dict, Any
 from app.config import settings
 
 
 class YOLOEngine:
-    """Wrapper for YOLO object detection."""
+    """Wrapper for YOLO object detection with ByteTrack."""
     
     def __init__(self):
         self.model = None
+        self.tracker = None
         self.model_loaded = False
     
     def load_model(self):
-        """Load YOLO model (downloads automatically if not present)."""
+        """Load YOLO model and initialize tracker."""
         if self.model_loaded:
             return
         
         try:
-            # Load YOLOv8 nano model (smallest, fastest)
+            # Load YOLOv8 model
             self.model = YOLO(settings.yolo_model)
+            # Initialize ByteTrack
+            self.tracker = sv.ByteTrack()
             self.model_loaded = True
             print(f"✓ YOLO model loaded: {settings.yolo_model}")
         except Exception as e:
             raise RuntimeError(f"Failed to load YOLO model: {e}")
     
-    def detect_objects(
+    def detect_and_track(
         self,
         image: np.ndarray,
         confidence: float = None
-    ) -> List[Dict[str, Any]]:
+    ) -> sv.Detections:
         """
-        Detect objects in an image.
+        Detect and track objects in an image.
         
         Args:
-            image: Input image (BGR format from OpenCV)
-            confidence: Confidence threshold (uses config default if None)
+            image: Input image (BGR format)
+            confidence: Confidence threshold
         
         Returns:
-            List of detections with format:
-            [
-                {
-                    'class_id': int,
-                    'class_name': str,
-                    'bbox': [x1, y1, x2, y2],
-                    'confidence': float
-                },
-                ...
-            ]
+            supervision.Detections object with tracker_id
         """
         if not self.model_loaded:
             self.load_model()
@@ -59,34 +53,15 @@ class YOLOEngine:
         conf = confidence if confidence is not None else settings.yolo_confidence
         
         # Run inference
-        results = self.model(image, conf=conf, verbose=False)
+        results = self.model(image, conf=conf, verbose=False)[0]
         
-        detections = []
+        # Convert to supervision Detections
+        detections = sv.Detections.from_ultralytics(results)
         
-        # Parse results
-        for result in results:
-            boxes = result.boxes
-            
-            for i in range(len(boxes)):
-                box = boxes[i]
-                
-                # Get box coordinates (xyxy format)
-                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                
-                # Get class and confidence
-                class_id = int(box.cls[0].cpu().numpy())
-                confidence = float(box.conf[0].cpu().numpy())
-                class_name = self.model.names[class_id]
-                
-                detections.append({
-                    'class_id': class_id,
-                    'class_name': class_name,
-                    'bbox': [float(x1), float(y1), float(x2), float(y2)],
-                    'confidence': confidence
-                })
+        # Update tracker
+        detections = self.tracker.update_with_detections(detections)
         
         return detections
-
 
 # Global instance
 yolo_engine = YOLOEngine()

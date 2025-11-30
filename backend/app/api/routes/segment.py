@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 async def process_segmentation(project_id: str, db_session):
-    """Background task to process video segmentation."""
+    """Background task to process video segmentation with tracking and visualization."""
     async with db_session() as db:
         # Get project
         result = await db.execute(select(Project).where(Project.id == project_id))
@@ -36,10 +36,13 @@ async def process_segmentation(project_id: str, db_session):
             
             start_time = time.time()
             
-            # Extract frames
+            # Setup paths
             frames_dir = Path(settings.data_dir) / "frames" / project_id
             frames_dir.mkdir(parents=True, exist_ok=True)
             
+            output_video_path = Path(settings.data_dir) / "videos" / project_id / "output_tracked.mp4"
+            
+            # Extract frames
             frame_paths, video_metadata = extract_frames(
                 video_path=project.video_path,
                 output_dir=str(frames_dir),
@@ -50,46 +53,91 @@ async def process_segmentation(project_id: str, db_session):
             yolo_engine.load_model()
             sam2_engine.load_model()
             
+            # Initialize annotators
+            import supervision as sv
+            box_annotator = sv.BoxAnnotator()
+            mask_annotator = sv.MaskAnnotator()
+            label_annotator = sv.LabelAnnotator()
+            
+            # Prepare video writer
+            first_frame = cv2.imread(frame_paths[0])
+            height, width, _ = first_frame.shape
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            video_writer = cv2.VideoWriter(str(output_video_path), fourcc, settings.frame_extraction_fps, (width, height))
+            
             # Process each frame
             all_frames_data = []
             objects_per_class = {}
             total_objects = 0
+            unique_ids = set()
+            
+            total_frames_count = len(frame_paths)
             
             for idx, frame_path in enumerate(frame_paths):
+                # Update progress every 5 frames or on last frame
+                if idx % 5 == 0 or idx == total_frames_count - 1:
+                    progress_percent = int((idx / total_frames_count) * 100)
+                    project.progress = progress_percent
+                    project.status_message = f"Processing frame {idx + 1}/{total_frames_count}"
+                    await db.commit()
+
                 # Load frame
-                frame_bgr = load_frame(frame_path)
+                frame_bgr = cv2.imread(frame_path)
                 frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
                 
-                # Detect objects with YOLO
-                detections = yolo_engine.detect_objects(frame_bgr)
+                # Detect and Track with YOLO + ByteTrack
+                detections = yolo_engine.detect_and_track(frame_bgr)
                 
-                # Segment with SAM2 (if available)
+                # Segment with SAM2
                 detections = sam2_engine.segment_objects(frame_rgb, detections)
                 
-                # Process detections
+                # Annotate frame
+                annotated_frame = frame_bgr.copy()
+                annotated_frame = mask_annotator.annotate(scene=annotated_frame, detections=detections)
+                annotated_frame = box_annotator.annotate(scene=annotated_frame, detections=detections)
+                
+                # Create labels
+                labels = []
+                for i in range(len(detections)):
+                    tracker_id = detections.tracker_id[i] if detections.tracker_id is not None else -1
+                    class_id = detections.class_id[i]
+                    class_name = detections.data['class_name'][i]
+                    confidence = detections.confidence[i]
+                    labels.append(f"#{tracker_id} {class_name} {confidence:.2f}")
+                    
+                    # Update stats
+                    unique_ids.add(tracker_id)
+                    objects_per_class[class_name] = objects_per_class.get(class_name, 0) + 1
+                    total_objects += 1
+                
+                annotated_frame = label_annotator.annotate(scene=annotated_frame, detections=detections, labels=labels)
+                
+                # Write to video
+                video_writer.write(annotated_frame)
+                
+                # Prepare data for JSON
                 frame_objects = []
-                for i, det in enumerate(detections):
+                for i in range(len(detections)):
+                    tracker_id = int(detections.tracker_id[i]) if detections.tracker_id is not None else -1
+                    class_name = detections.data['class_name'][i]
+                    bbox = detections.xyxy[i].tolist()
+                    confidence = float(detections.confidence[i])
+                    
                     obj_data = {
-                        'id': i,
-                        'class_name': det['class_name'],
-                        'bbox': det['bbox'],
-                        'confidence': det['confidence']
+                        'id': tracker_id,
+                        'class_name': class_name,
+                        'bbox': bbox,
+                        'confidence': confidence
                     }
                     
                     # Save mask if available
-                    if 'mask' in det:
+                    if detections.mask is not None:
                         mask_path = frames_dir / f"frame_{idx:04d}_mask_{i}.png"
-                        # Save mask as image
-                        mask_img = (det['mask'] * 255).astype('uint8')
+                        mask_img = (detections.mask[i] * 255).astype('uint8')
                         cv2.imwrite(str(mask_path), mask_img)
                         obj_data['mask_path'] = str(mask_path)
                     
                     frame_objects.append(obj_data)
-                    
-                    # Update class counts
-                    class_name = det['class_name']
-                    objects_per_class[class_name] = objects_per_class.get(class_name, 0) + 1
-                    total_objects += 1
                 
                 # Store frame data
                 timestamp = idx / settings.frame_extraction_fps
@@ -99,6 +147,13 @@ async def process_segmentation(project_id: str, db_session):
                     'objects': frame_objects
                 }
                 all_frames_data.append(frame_data)
+            
+            video_writer.release()
+            
+            # Finalize progress
+            project.progress = 100
+            project.status_message = "Finalizing results..."
+            await db.commit()
             
             # Calculate statistics
             processing_time = time.time() - start_time
@@ -112,6 +167,7 @@ async def process_segmentation(project_id: str, db_session):
                 'stats': {
                     'total_frames': total_frames,
                     'total_objects': total_objects,
+                    'unique_objects': len(unique_ids),
                     'objects_per_class': objects_per_class,
                     'avg_objects_per_frame': avg_objects_per_frame,
                     'processing_time_seconds': processing_time
@@ -128,10 +184,13 @@ async def process_segmentation(project_id: str, db_session):
             project.total_objects = total_objects
             project.segmentation_json_path = str(segmentation_json_path)
             project.segmentation_time = processing_time
+            project.annotated_video_path = str(output_video_path) # Add this field to schema if not exists
             
             await db.commit()
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             project.status = ProjectStatus.FAILED
             await db.commit()
             print(f"Segmentation failed for project {project_id}: {e}")
@@ -207,5 +266,7 @@ async def get_segmentation_status(
     return {
         'project_id': project_id,
         'status': project.status,
+        'progress': project.progress,
+        'status_message': project.status_message,
         'stats': stats
     }

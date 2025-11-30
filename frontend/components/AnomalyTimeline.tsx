@@ -7,6 +7,7 @@ import { AlertTriangle } from "lucide-react";
 interface AnomalyTimelineProps {
     anomalies: Anomaly[];
     totalFrames: number;
+    onSeek?: (timestamp: number) => void;
 }
 
 export function AnomalyTimeline({ anomalies, totalFrames }: AnomalyTimelineProps) {

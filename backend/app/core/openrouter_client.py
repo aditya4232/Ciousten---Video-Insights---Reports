@@ -54,43 +54,65 @@ class OpenRouterClient:
             "max_tokens": max_tokens
         }
         
+        retries = 3
+        backoff = 2
+        
         async with httpx.AsyncClient(timeout=120.0) as client:
-            try:
-                response = await client.post(
-                    endpoint,
-                    headers=self.headers,
-                    json=payload
-                )
-                response.raise_for_status()
-                
-                result = response.json()
-                
-                # Extract content from response
-                content = result["choices"][0]["message"]["content"]
-                
-                # Try to parse as JSON
+            for attempt in range(retries):
                 try:
-                    # Remove markdown code blocks if present
-                    if content.startswith("```json"):
-                        content = content.split("```json")[1].split("```")[0].strip()
-                    elif content.startswith("```"):
-                        content = content.split("```")[1].split("```")[0].strip()
+                    response = await client.post(
+                        endpoint,
+                        headers=self.headers,
+                        json=payload
+                    )
                     
-                    parsed_json = json.loads(content)
-                    return parsed_json
+                    if response.status_code == 429:
+                        if attempt < retries - 1:
+                            import asyncio
+                            wait_time = backoff * (attempt + 1)
+                            print(f"⚠ OpenRouter 429 Rate Limit. Retrying in {wait_time}s...")
+                            await asyncio.sleep(wait_time)
+                            continue
+                    
+                    response.raise_for_status()
+                    
+                    result = response.json()
+                    
+                    # Extract content from response
+                    content = result["choices"][0]["message"]["content"]
+                    
+                    # Try to parse as JSON
+                    try:
+                        # Remove markdown code blocks if present
+                        if content.startswith("```json"):
+                            content = content.split("```json")[1].split("```")[0].strip()
+                        elif content.startswith("```"):
+                            content = content.split("```")[1].split("```")[0].strip()
+                        
+                        parsed_json = json.loads(content)
+                        return parsed_json
+                    
+                    except json.JSONDecodeError as e:
+                        # If JSON parsing fails, return raw content
+                        return {
+                            "error": "Failed to parse JSON response",
+                            "raw_content": content,
+                            "parse_error": str(e)
+                        }
                 
-                except json.JSONDecodeError as e:
-                    # If JSON parsing fails, return raw content
-                    return {
-                        "error": "Failed to parse JSON response",
-                        "raw_content": content,
-                        "parse_error": str(e)
-                    }
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 429 and attempt < retries - 1:
+                         # This block might be redundant due to the explicit check above, but good for safety
+                         import asyncio
+                         wait_time = backoff * (attempt + 1)
+                         print(f"⚠ OpenRouter 429 Rate Limit (caught). Retrying in {wait_time}s...")
+                         await asyncio.sleep(wait_time)
+                         continue
+                    raise RuntimeError(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
+                except Exception as e:
+                    raise RuntimeError(f"OpenRouter API call failed: {str(e)}")
             
-            except httpx.HTTPStatusError as e:
-                raise RuntimeError(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
-            except Exception as e:
-                raise RuntimeError(f"OpenRouter API call failed: {str(e)}")
+            raise RuntimeError("OpenRouter API failed after retries")
     
     async def analyze_video_metadata(
         self,
@@ -150,6 +172,7 @@ Ensure your response is valid JSON only, no additional text."""
 
 Total Frames: {metadata.get('total_frames', 0)}
 Total Objects Detected: {metadata.get('total_objects', 0)}
+Unique Objects Tracked: {metadata.get('unique_objects', 'N/A')}
 Average Objects per Frame: {metadata.get('avg_objects_per_frame', 0):.2f}
 
 Objects by Class:
@@ -160,15 +183,30 @@ Sample Frame Data (first 5 frames):
 
 Provide a comprehensive analysis with actionable insights, potential anomalies, and recommendations for building a dataset from this video."""
         
-        # Call OpenRouter
-        result = await self.call_openrouter(
-            model=model,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            temperature=0.7
-        )
-        
-        return result
+        try:
+            # Call OpenRouter
+            result = await self.call_openrouter(
+                model=model,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.7
+            )
+            return result
+        except Exception as e:
+            print(f"Analysis failed: {e}")
+            return {
+                "summary": "AI Analysis is currently unavailable due to high traffic or API limits. Please try again later.",
+                "key_findings": ["Analysis service busy", "Please retry"],
+                "anomalies": [],
+                "dataset_plan": {
+                    "recommended_classes": [],
+                    "train_split": 0.0,
+                    "val_split": 0.0,
+                    "test_split": 0.0,
+                    "notes": "Service unavailable"
+                },
+                "kpis": []
+            }
 
     async def generate_dataset_card(
         self,

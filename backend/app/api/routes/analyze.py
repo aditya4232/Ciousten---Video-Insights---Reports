@@ -82,6 +82,7 @@ async def analyze_video(
     metadata = {
         'total_frames': stats.get('total_frames', 0),
         'total_objects': stats.get('total_objects', 0),
+        'unique_objects': stats.get('unique_objects', 0),
         'avg_objects_per_frame': stats.get('avg_objects_per_frame', 0),
         'objects_per_class': stats.get('objects_per_class', {}),
         'sample_frames': sample_frames
@@ -151,6 +152,8 @@ async def analyze_video(
         )
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         project.status = ProjectStatus.SEGMENTED
         await db.commit()
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")

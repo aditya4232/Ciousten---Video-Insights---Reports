@@ -156,6 +156,29 @@ async def download_report(
     )
 
 
+@router.get("/reports/{project_id}/video")
+async def download_video(
+    project_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """Download the annotated video."""
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    
+    if not project or not project.annotated_video_path:
+        raise HTTPException(status_code=404, detail="Video not found")
+        
+    file_path = project.annotated_video_path
+    if not Path(file_path).exists():
+        raise HTTPException(status_code=404, detail="Video file not found")
+        
+    return FileResponse(
+        path=file_path,
+        media_type="video/mp4",
+        filename=f"tracked_{project.video_filename}"
+    )
+
+
 @router.get("/projects", response_model=List[ProjectSummary])
 async def list_projects(db: AsyncSession = Depends(get_db)):
     """
@@ -181,7 +204,8 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
             has_analysis=project.analysis_json is not None,
             has_reports=project.has_reports,
             excel_path=f"/api/reports/{project.id}/download/excel" if project.excel_path else None,
-            pdf_path=f"/api/reports/{project.id}/download/pdf" if project.pdf_path else None
+            pdf_path=f"/api/reports/{project.id}/download/pdf" if project.pdf_path else None,
+            annotated_video_path=f"/api/reports/{project.id}/video" if project.annotated_video_path else None
         ))
     
     return summaries

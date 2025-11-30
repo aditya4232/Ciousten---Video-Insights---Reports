@@ -25,11 +25,16 @@ class Project(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Progress Tracking
+    progress = Column(Integer, default=0)
+    status_message = Column(String, default="Initialized")
+    
     # Segmentation data
     total_frames = Column(Integer, nullable=True)
     total_objects = Column(Integer, nullable=True)
     segmentation_json_path = Column(String, nullable=True)
     segmentation_time = Column(Float, nullable=True)
+    annotated_video_path = Column(String, nullable=True)
     
     # Analysis data
     analysis_json = Column(Text, nullable=True)

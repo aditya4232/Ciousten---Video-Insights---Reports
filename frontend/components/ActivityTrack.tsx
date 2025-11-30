@@ -7,6 +7,7 @@ import { Activity as ActivityIcon } from "lucide-react";
 interface ActivityTrackProps {
     activities: Activity[];
     totalFrames: number;
+    onSeek?: (timestamp: number) => void;
 }
 
 export function ActivityTrack({ activities, totalFrames }: ActivityTrackProps) {

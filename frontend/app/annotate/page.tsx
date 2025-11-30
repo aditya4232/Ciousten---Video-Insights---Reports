@@ -19,6 +19,8 @@ export default function AnnotatePage() {
     const [status, setStatus] = useState<string>("idle");
     const [stats, setStats] = useState<any>(null);
     const [dragActive, setDragActive] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [statusMessage, setStatusMessage] = useState("");
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -83,6 +85,32 @@ export default function AnnotatePage() {
         }
     };
 
+    const handleSampleVideo = async () => {
+        setUploading(true);
+        setStatus("uploading");
+
+        try {
+            const data = await api.createSampleProject();
+            setProjectId(data.project_id);
+            setStatus("uploaded");
+            addToast({
+                title: "Success",
+                description: "Sample video loaded successfully",
+                variant: "success",
+            });
+        } catch (error) {
+            console.error("Sample load error:", error);
+            setStatus("error");
+            addToast({
+                title: "Failed to load sample",
+                description: getErrorMessage(error),
+                variant: "error",
+            });
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const handleSegment = async () => {
         if (!projectId) return;
 
@@ -97,10 +125,14 @@ export default function AnnotatePage() {
                 try {
                     const statusData = await api.getSegmentationStatus(projectId);
 
+                    if (statusData.progress) setProgress(statusData.progress);
+                    if (statusData.status_message) setStatusMessage(statusData.status_message);
+
                     if (statusData.status === "segmented") {
                         setStats(statusData.stats);
                         setStatus("segmented");
                         setSegmenting(false);
+                        setProgress(100);
                         addToast({
                             title: "Success",
                             description: "Segmentation completed successfully",
@@ -115,7 +147,7 @@ export default function AnnotatePage() {
                             variant: "error",
                         });
                     } else {
-                        setTimeout(pollStatus, 3000);
+                        setTimeout(pollStatus, 1000);
                     }
                 } catch (error) {
                     setStatus("error");
@@ -168,8 +200,8 @@ export default function AnnotatePage() {
                                 <div className="space-y-4">
                                     <div
                                         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive
-                                                ? "border-primary bg-primary/5"
-                                                : "hover:border-primary/50"
+                                            ? "border-primary bg-primary/5"
+                                            : "hover:border-primary/50"
                                             }`}
                                         onDragEnter={handleDrag}
                                         onDragLeave={handleDrag}
@@ -198,25 +230,35 @@ export default function AnnotatePage() {
                                         </label>
                                     </div>
 
-                                    <Button
-                                        onClick={handleUpload}
-                                        disabled={!file || uploading || status !== "idle"}
-                                        className="w-full"
-                                    >
-                                        {uploading ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Uploading...
-                                            </>
-                                        ) : status === "uploaded" || status === "segmented" ? (
-                                            <>
-                                                <CheckCircle2 className="mr-2 h-4 w-4" />
-                                                Uploaded
-                                            </>
-                                        ) : (
-                                            "Upload Video"
-                                        )}
-                                    </Button>
+                                    <div className="flex gap-3">
+                                        <Button
+                                            onClick={handleUpload}
+                                            disabled={!file || uploading || status !== "idle"}
+                                            className="flex-1"
+                                        >
+                                            {uploading ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Uploading...
+                                                </>
+                                            ) : status === "uploaded" || status === "segmented" ? (
+                                                <>
+                                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                                    Uploaded
+                                                </>
+                                            ) : (
+                                                "Upload Video"
+                                            )}
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleSampleVideo}
+                                            disabled={uploading || status !== "idle"}
+                                            className="flex-1"
+                                        >
+                                            Try Sample Video
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -240,6 +282,21 @@ export default function AnnotatePage() {
                                             <p className="text-xs text-muted-foreground font-mono">{projectId}</p>
                                         </div>
 
+                                        {segmenting && (
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span>{statusMessage || "Processing..."}</span>
+                                                    <span>{progress}%</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-primary transition-all duration-500 ease-out"
+                                                        style={{ width: `${progress}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <Button
                                             onClick={handleSegment}
                                             disabled={segmenting || status === "segmented"}
@@ -248,7 +305,7 @@ export default function AnnotatePage() {
                                             {segmenting ? (
                                                 <>
                                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Segmenting... (this may take a few minutes)
+                                                    Segmenting...
                                                 </>
                                             ) : status === "segmented" ? (
                                                 <>

@@ -12,6 +12,7 @@ export interface Project {
     has_segmentation: boolean;
     has_analysis: boolean;
     has_reports: boolean;
+    annotated_video_path?: string;
 }
 
 export interface SegmentationStats {
@@ -138,7 +139,18 @@ class ApiClient {
         return response.json();
     }
 
-    // Segmentation APIs
+    async createSampleProject(): Promise<{ project_id: string }> {
+        const response = await fetch(`${this.baseUrl}/sample`, {
+            method: 'POST',
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "Failed to create sample project");
+        }
+
+        return response.json();
+    }
     async startSegmentation(projectId: string): Promise<void> {
         await this.request(`/segment-video/${projectId}`, {
             method: 'POST',
@@ -148,6 +160,8 @@ class ApiClient {
     async getSegmentationStatus(projectId: string): Promise<{
         status: string;
         stats?: SegmentationStats;
+        progress?: number;
+        status_message?: string;
     }> {
         return this.request(`/segment-video/${projectId}/status`);
     }
