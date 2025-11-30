@@ -10,6 +10,9 @@ import json
 from app.db import get_db, Project
 from app.schemas import AnalysisRequest, AnalysisResponse, AnalysisResult, ProjectStatus
 from app.core.openrouter_client import openrouter_client
+from app.core.anomaly_engine import detect_anomalies
+from app.core.activity_engine import detect_activities
+from app.core.plugins.registry import registry
 
 router = APIRouter()
 
@@ -89,11 +92,22 @@ async def analyze_video(
     await db.commit()
     
     try:
-        # Call OpenRouter for analysis
+        # 1. Run Anomaly Detection
+        anomalies = detect_anomalies(segmentation_data)
+        anomaly_summaries = [a.description for a in anomalies]
+        
+        # 2. Run Activity Recognition
+        activities = detect_activities(segmentation_data)
+        
+        # 3. Run Plugins
+        plugin_results = registry.run_all_plugins(project_id, segmentation_data, {})
+        
+        # 4. Call OpenRouter for analysis
         analysis_result = await openrouter_client.analyze_video_metadata(
             metadata=metadata,
             analysis_type=request.analysis_type,
-            model=request.model
+            model=request.model,
+            mode=request.mode
         )
         
         # Validate response structure
@@ -109,8 +123,18 @@ async def analyze_video(
             if field not in analysis_result:
                 analysis_result[field] = [] if field != 'summary' else "No analysis available"
         
+        # Merge detected anomalies with LLM anomalies if needed, or just keep them separate
+        # For now, we store structured anomalies in the new field
+        
         # Store analysis results
-        project.analysis_json = json.dumps(analysis_result)
+        final_result = AnalysisResult(
+            **analysis_result,
+            anomaly_events=anomalies,
+            activities=activities,
+            mode=request.mode
+        )
+        
+        project.analysis_json = final_result.model_dump_json()
         project.analysis_model = request.model
         project.analysis_type = request.analysis_type
         project.status = ProjectStatus.ANALYZED
@@ -121,7 +145,7 @@ async def analyze_video(
         return AnalysisResponse(
             project_id=project_id,
             status=ProjectStatus.ANALYZED,
-            analysis=AnalysisResult(**analysis_result),
+            analysis=final_result,
             model_used=request.model,
             message="Analysis completed successfully"
         )

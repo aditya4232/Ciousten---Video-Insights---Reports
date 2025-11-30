@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from app.db import init_db
-from app.api.routes import upload, segment, analyze, reports
+from app.api.routes import upload, segment, analyze, reports, projects
 from app.config import settings
 from pathlib import Path
 
@@ -54,6 +54,7 @@ app.include_router(upload.router, prefix="/api", tags=["Upload"])
 app.include_router(segment.router, prefix="/api", tags=["Segmentation"])
 app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
 app.include_router(reports.router, prefix="/api", tags=["Reports"])
+app.include_router(projects.router, prefix="/api", tags=["Projects"])
 
 
 @app.get("/")

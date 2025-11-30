@@ -96,7 +96,8 @@ class OpenRouterClient:
         self,
         metadata: Dict[str, Any],
         analysis_type: str = "generic",
-        model: str = None
+        model: str = None,
+        mode: str = "generic"
     ) -> Dict[str, Any]:
         """
         Analyze video segmentation metadata using OpenRouter.
@@ -105,36 +106,47 @@ class OpenRouterClient:
             metadata: Segmentation metadata (frames, objects, counts)
             analysis_type: Type of analysis (traffic, retail, sports, etc.)
             model: Model to use (uses default if None)
+            mode: Domain mode (traffic, retail, security, generic)
         
         Returns:
             Structured analysis result
         """
         model = model or settings.openrouter_default_model
         
+        # Mode-specific context
+        mode_context = ""
+        if mode == "traffic":
+            mode_context = "Focus on vehicle counts, congestion levels, traffic flow, and safety risks."
+        elif mode == "retail":
+            mode_context = "Focus on customer behavior, dwell times, queue lengths, and store layout efficiency."
+        elif mode == "security":
+            mode_context = "Focus on suspicious activities, unauthorized access, crowd density, and potential threats."
+        
         # Create system prompt
-        system_prompt = """You are an expert AI video analytics assistant. You analyze video segmentation data and provide structured insights.
+        system_prompt = f"""You are an expert AI video analytics assistant specialized in {mode} analysis. {mode_context}
+You analyze video segmentation data and provide structured insights.
 
 You MUST respond ONLY with valid JSON following this exact schema:
 
-{
+{{
   "summary": "Brief overview of the video content and key observations",
   "key_findings": ["Finding 1", "Finding 2", "Finding 3"],
   "anomalies": ["Anomaly 1", "Anomaly 2"],
-  "dataset_plan": {
+  "dataset_plan": {{
     "classes": [
-      {"name": "class_name", "min_samples": 100, "notes": "Notes about this class"}
+      {{"name": "class_name", "min_samples": 100, "notes": "Notes about this class"}}
     ],
-    "recommended_split": {"train": 0.7, "val": 0.15, "test": 0.15}
-  },
+    "recommended_split": {{"train": 0.7, "val": 0.15, "test": 0.15}}
+  }},
   "kpis": [
-    {"name": "KPI Name", "value": 123.45, "unit": "unit"}
+    {{"name": "KPI Name", "value": 123.45, "unit": "unit"}}
   ]
-}
+}}
 
 Ensure your response is valid JSON only, no additional text."""
         
         # Create user prompt with metadata
-        user_prompt = f"""Analyze this video segmentation data for a {analysis_type} scenario:
+        user_prompt = f"""Analyze this video segmentation data for a {mode} scenario:
 
 Total Frames: {metadata.get('total_frames', 0)}
 Total Objects Detected: {metadata.get('total_objects', 0)}
@@ -157,6 +169,51 @@ Provide a comprehensive analysis with actionable insights, potential anomalies, 
         )
         
         return result
+
+    async def generate_dataset_card(
+        self,
+        project_summary: Dict[str, Any],
+        analysis_summary: Dict[str, Any],
+        model: str = None
+    ) -> Dict[str, Any]:
+        """
+        Generate a dataset card using OpenRouter.
+        """
+        model = model or settings.openrouter_default_model
+        
+        system_prompt = """You are an expert data scientist. You generate professional Dataset Cards (README.md style) for video datasets.
+        
+You MUST respond ONLY with valid JSON following this exact schema:
+
+{
+  "title": "Dataset Title",
+  "description": "Detailed description...",
+  "intended_use": "Intended use cases...",
+  "labels": ["Label 1", "Label 2"],
+  "collection_process": "How data was collected...",
+  "risks": "Potential risks...",
+  "limitations": "Known limitations...",
+  "ethical_considerations": "Ethical notes..."
+}
+
+Ensure your response is valid JSON only."""
+
+        user_prompt = f"""Generate a Dataset Card for this video project:
+
+Project Info:
+{json.dumps(project_summary, indent=2)}
+
+Analysis Insights:
+{json.dumps(analysis_summary, indent=2)}
+
+Create a comprehensive, professional dataset card suitable for Hugging Face or GitHub."""
+
+        return await self.call_openrouter(
+            model=model,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.7
+        )
 
 
 # Global instance

@@ -22,10 +22,38 @@ export interface SegmentationStats {
     objects_per_class: Record<string, number>;
 }
 
+export interface Anomaly {
+    frame_index: number;
+    timestamp: number;
+    description: string;
+    severity: number;
+}
+
+export interface Activity {
+    start_frame: number;
+    end_frame: number;
+    label: string;
+    confidence: number;
+}
+
+export interface DatasetCard {
+    title: string;
+    description: string;
+    intended_use: string;
+    labels: string[];
+    collection_process: string;
+    risks: string;
+    limitations: string;
+    ethical_considerations: string;
+}
+
 export interface Analysis {
     summary: string;
     key_findings: string[];
     anomalies?: string[];
+    anomaly_events?: Anomaly[];
+    activities?: Activity[];
+    mode?: string;
     kpis?: Array<{
         name: string;
         value: number;
@@ -42,7 +70,7 @@ export interface ApiError {
 class ApiClient {
     private baseUrl: string;
 
-    constructor(baseUrl: string = '/api') {
+    constructor(baseUrl: string = 'http://localhost:8000/api') {
         this.baseUrl = baseUrl;
     }
 
@@ -128,11 +156,12 @@ class ApiClient {
     async analyzeVideo(
         projectId: string,
         analysisType: string,
-        model: string
+        model: string,
+        mode: string = "generic"
     ): Promise<{ analysis: Analysis }> {
         return this.request(`/analyze/${projectId}`, {
             method: 'POST',
-            body: JSON.stringify({ analysis_type: analysisType, model }),
+            body: JSON.stringify({ analysis_type: analysisType, model, mode }),
         });
     }
 
@@ -142,6 +171,14 @@ class ApiClient {
             method: 'POST',
         });
     }
+
+    async generateDatasetCard(projectId: string): Promise<DatasetCard> {
+        return this.request<DatasetCard>(`/projects/${projectId}/dataset-card`, {
+            method: 'POST',
+        });
+    }
+
+
 
     async downloadReport(
         projectId: string,

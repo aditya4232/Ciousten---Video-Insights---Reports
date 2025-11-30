@@ -69,8 +69,20 @@ class SegmentationResponse(BaseModel):
     stats: SegmentationStats
     message: str
 
+class DatasetPlan(BaseModel):
+    """Plan for creating a dataset."""
+    recommended_classes: List[str]
+    train_split: float
+    val_split: float
+    test_split: float
+    notes: str
 
-    pdf_path: Optional[str] = None
+
+class KPI(BaseModel):
+    """Key Performance Indicator."""
+    name: str
+    value: float
+    unit: str
 
 
 class Anomaly(BaseModel):

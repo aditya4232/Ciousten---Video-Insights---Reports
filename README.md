@@ -19,6 +19,10 @@ Ciousten is a complete, open-source video analytics platform that enables you to
 
 ✨ **Smart Segmentation** - CPU-optimized SAM2 + YOLO detection  
 🧠 **AI Analysis** - OpenRouter integration for intelligent insights  
+🚨 **Anomaly Detection** - Auto-detect unusual events and spikes  
+🏃 **Activity Recognition** - Classify scenes (Traffic, Retail, etc.)  
+📝 **Dataset Cards** - Auto-generate AI dataset documentation  
+🔌 **Plugin System** - Extensible architecture for custom modules  
 📊 **Auto Reports** - Multi-sheet Excel workbooks with charts  
 📄 **PDF Generation** - Professional analysis reports  
 🐳 **Docker Ready** - One-command deployment with docker-compose  
@@ -160,20 +164,19 @@ The frontend will be available at `http://localhost:3000` and will proxy API req
 5. View segmentation statistics
 
 ### 2. AI Analysis
-
 1. Navigate to **Analyze** page
 2. Select your segmented project
-3. Choose analysis type (traffic, retail, sports, etc.)
+3. **Select Domain Mode** (Traffic, Retail, Security, etc.)
 4. Select AI model (DeepSeek Free, Llama 3.1, etc.)
-5. Click **Run AI Analysis**
-6. Review insights, findings, and anomalies
+5. Click **Run Advanced Analysis**
+6. Review insights, anomaly timeline, and activity tracks
 
-### 3. Generate Reports
-
+### 3. Generate Reports & Dataset Cards
 1. Navigate to **Reports** page
 2. Find your analyzed project
-3. Click **Generate Reports**
-4. Download Excel and PDF reports
+3. Click **Generate Reports** for Excel/PDF
+4. Click **Generate AI Dataset Card** to create documentation
+5. Copy or download the results
 
 ---
 

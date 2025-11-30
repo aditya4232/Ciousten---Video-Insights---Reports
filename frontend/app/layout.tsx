@@ -24,6 +24,9 @@ export default function RootLayout({
                     <ToastProvider>
                         <ModernNavigation />
                         {children}
+                        <div className="fixed bottom-2 right-4 text-xs text-muted-foreground/50 pointer-events-none select-none z-50">
+                            Aditya Shenvi
+                        </div>
                     </ToastProvider>
                 </ThemeProvider>
             </body>

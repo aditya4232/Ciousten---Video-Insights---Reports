@@ -8,8 +8,9 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSkeleton } from "@/components/ui/loading-skeleton";
 import { useToast } from "@/components/ui/toast";
-import { api, Project, getErrorMessage } from "@/lib/api";
-import { FileText, Download, Loader2, CheckCircle2, Inbox } from "lucide-react";
+import { api, Project, getErrorMessage, DatasetCard } from "@/lib/api";
+import { FileText, Download, Loader2, CheckCircle2, Inbox, Sparkles } from "lucide-react";
+import { DatasetCardView } from "@/components/DatasetCardView";
 
 export default function ReportsPage() {
     const router = useRouter();
@@ -17,6 +18,8 @@ export default function ReportsPage() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState<string | null>(null);
+    const [generatingCard, setGeneratingCard] = useState<string | null>(null);
+    const [datasetCards, setDatasetCards] = useState<Record<string, DatasetCard>>({});
 
     useEffect(() => {
         fetchProjects();
@@ -62,6 +65,28 @@ export default function ReportsPage() {
         }
     };
 
+    const handleGenerateDatasetCard = async (projectId: string) => {
+        setGeneratingCard(projectId);
+        try {
+            const card = await api.generateDatasetCard(projectId);
+            setDatasetCards(prev => ({ ...prev, [projectId]: card }));
+            addToast({
+                title: "Success",
+                description: "Dataset Card generated successfully",
+                variant: "success",
+            });
+        } catch (error) {
+            console.error("Card generation error:", error);
+            addToast({
+                title: "Generation Failed",
+                description: getErrorMessage(error),
+                variant: "error",
+            });
+        } finally {
+            setGeneratingCard(null);
+        }
+    };
+
     const handleDownload = async (projectId: string, type: "excel" | "pdf") => {
         try {
             const blob = await api.downloadReport(projectId, type);
@@ -97,7 +122,7 @@ export default function ReportsPage() {
 
                     <h2 className="text-3xl font-bold mb-2">Reports & Downloads</h2>
                     <p className="text-muted-foreground mb-8">
-                        Generate and download Excel and PDF reports for analyzed projects
+                        Generate and download Excel/PDF reports and Dataset Cards.
                     </p>
 
                     {loading ? (
@@ -113,7 +138,7 @@ export default function ReportsPage() {
                             }}
                         />
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {projects.map((project) => (
                                 <Card key={project.project_id}>
                                     <CardHeader>
@@ -137,44 +162,74 @@ export default function ReportsPage() {
                                         </div>
                                     </CardHeader>
                                     <CardContent>
-                                        {project.has_reports ? (
-                                            <div className="flex gap-3">
+                                        <div className="flex flex-col gap-4">
+                                            {/* Report Buttons */}
+                                            {project.has_reports ? (
+                                                <div className="flex gap-3">
+                                                    <Button
+                                                        onClick={() => handleDownload(project.project_id, "excel")}
+                                                        variant="outline"
+                                                        className="flex-1"
+                                                    >
+                                                        <Download className="mr-2 h-4 w-4" />
+                                                        Excel Report
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => handleDownload(project.project_id, "pdf")}
+                                                        variant="outline"
+                                                        className="flex-1"
+                                                    >
+                                                        <Download className="mr-2 h-4 w-4" />
+                                                        PDF Report
+                                                    </Button>
+                                                </div>
+                                            ) : (
                                                 <Button
-                                                    onClick={() => handleDownload(project.project_id, "excel")}
-                                                    variant="outline"
-                                                    className="flex-1"
+                                                    onClick={() => handleGenerateReports(project.project_id)}
+                                                    disabled={generating === project.project_id}
+                                                    className="w-full"
                                                 >
-                                                    <Download className="mr-2 h-4 w-4" />
-                                                    Download Excel
+                                                    {generating === project.project_id ? (
+                                                        <>
+                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                            Generating Reports...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <FileText className="mr-2 h-4 w-4" />
+                                                            Generate Reports (Excel + PDF)
+                                                        </>
+                                                    )}
                                                 </Button>
+                                            )}
+
+                                            {/* Dataset Card Button */}
+                                            {!datasetCards[project.project_id] && (
                                                 <Button
-                                                    onClick={() => handleDownload(project.project_id, "pdf")}
-                                                    variant="outline"
-                                                    className="flex-1"
+                                                    onClick={() => handleGenerateDatasetCard(project.project_id)}
+                                                    disabled={generatingCard === project.project_id}
+                                                    variant="secondary"
+                                                    className="w-full"
                                                 >
-                                                    <Download className="mr-2 h-4 w-4" />
-                                                    Download PDF
+                                                    {generatingCard === project.project_id ? (
+                                                        <>
+                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                            Generating Dataset Card...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Sparkles className="mr-2 h-4 w-4 text-purple-500" />
+                                                            Generate AI Dataset Card
+                                                        </>
+                                                    )}
                                                 </Button>
-                                            </div>
-                                        ) : (
-                                            <Button
-                                                onClick={() => handleGenerateReports(project.project_id)}
-                                                disabled={generating === project.project_id}
-                                                className="w-full"
-                                            >
-                                                {generating === project.project_id ? (
-                                                    <>
-                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                        Generating Reports...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <FileText className="mr-2 h-4 w-4" />
-                                                        Generate Reports
-                                                    </>
-                                                )}
-                                            </Button>
-                                        )}
+                                            )}
+
+                                            {/* Dataset Card View */}
+                                            {datasetCards[project.project_id] && (
+                                                <DatasetCardView card={datasetCards[project.project_id]} />
+                                            )}
+                                        </div>
                                     </CardContent>
                                 </Card>
                             ))}
