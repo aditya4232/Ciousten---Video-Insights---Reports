@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+  images: {
+    unoptimized: true,
+  },
+  // Suppress hydration warnings for theme provider
   reactStrictMode: true,
+
+  // API rewrites to proxy to backend
   async rewrites() {
     return [
       {
@@ -9,6 +16,6 @@ const nextConfig = {
       },
     ];
   },
-};
+}
 
 module.exports = nextConfig;

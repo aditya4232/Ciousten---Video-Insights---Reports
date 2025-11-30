@@ -70,41 +70,67 @@ class SegmentationResponse(BaseModel):
     message: str
 
 
+    pdf_path: Optional[str] = None
+
+
+class Anomaly(BaseModel):
+    """Detected anomaly in video."""
+    frame_index: int
+    timestamp: float
+    description: str
+    severity: float = Field(..., description="0.0 to 1.0")
+
+
+class Activity(BaseModel):
+    """Detected activity in video segment."""
+    start_frame: int
+    end_frame: int
+    label: str
+    confidence: float
+
+
+class DatasetCard(BaseModel):
+    """Auto-generated dataset card."""
+    title: str
+    description: str
+    intended_use: str
+    labels: List[str]
+    collection_process: str
+    risks: str
+    limitations: str
+    ethical_considerations: str
+
+
+class PluginStatus(BaseModel):
+    """Status of a plugin."""
+    name: str
+    enabled: bool
+    version: str
+
+
+class PluginResult(BaseModel):
+    """Result from a plugin execution."""
+    plugin_name: str
+    data: Dict[str, Any]
+
+
 class AnalysisRequest(BaseModel):
     """Request for AI analysis."""
     analysis_type: AnalysisType = AnalysisType.GENERIC
     model: str = "deepseek/deepseek-chat-free"
-
-
-class DatasetClassPlan(BaseModel):
-    """Recommended class for dataset."""
-    name: str
-    min_samples: int
-    notes: str
-
-
-class DatasetPlan(BaseModel):
-    """Recommended dataset plan."""
-    classes: List[DatasetClassPlan]
-    recommended_split: Dict[str, float] = Field(
-        ..., description="train/val/test split percentages"
-    )
-
-
-class KPI(BaseModel):
-    """Key Performance Indicator."""
-    name: str
-    value: float
-    unit: str
+    mode: str = "generic"  # traffic, retail, security, generic
 
 
 class AnalysisResult(BaseModel):
     """AI analysis result."""
     summary: str
     key_findings: List[str]
-    anomalies: List[str]
+    anomalies: List[str]  # Text summary of anomalies
+    anomaly_events: List[Anomaly] = [] # Structured anomalies
+    activities: List[Activity] = []
     dataset_plan: DatasetPlan
     kpis: List[KPI]
+    mode: str = "generic"
 
 
 class AnalysisResponse(BaseModel):

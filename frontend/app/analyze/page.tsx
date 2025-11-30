@@ -1,31 +1,44 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Video, Brain, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/loading-skeleton";
+import { useToast } from "@/components/ui/toast";
+import { api, Project, getErrorMessage } from "@/lib/api";
+import { Brain, Loader2, CheckCircle2, AlertCircle, Inbox } from "lucide-react";
 
 export default function AnalyzePage() {
-    const [projects, setProjects] = useState<any[]>([]);
-    const [selectedProject, setSelectedProject] = useState<string>("");
+    const router = useRouter();
+    const { addToast } = useToast();
+    const [loading, setLoading] = useState(true);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [selectedProject, setSelectedProject] = useState("");
     const [analysisType, setAnalysisType] = useState("generic");
     const [model, setModel] = useState("deepseek/deepseek-chat-free");
     const [analyzing, setAnalyzing] = useState(false);
     const [analysis, setAnalysis] = useState<any>(null);
-    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchProjects();
     }, []);
 
     const fetchProjects = async () => {
+        setLoading(true);
         try {
-            const response = await fetch("/api/projects");
-            const data = await response.json();
-            setProjects(data.filter((p: any) => p.has_segmentation));
+            const data = await api.getProjects();
+            setProjects(data.filter((p) => p.has_segmentation));
         } catch (error) {
-            console.error("Failed to fetch projects:", error);
+            addToast({
+                title: "Error",
+                description: getErrorMessage(error),
+                variant: "error",
+            });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -33,53 +46,33 @@ export default function AnalyzePage() {
         if (!selectedProject) return;
 
         setAnalyzing(true);
-        setError(null);
 
         try {
-            const response = await fetch(`/api/analyze/${selectedProject}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ analysis_type: analysisType, model }),
-            });
-
-            if (!response.ok) throw new Error("Analysis failed");
-
-            const data = await response.json();
+            const data = await api.analyzeVideo(selectedProject, analysisType, model);
             setAnalysis(data.analysis);
-        } catch (error: any) {
+            addToast({
+                title: "Success",
+                description: "Analysis completed successfully",
+                variant: "success",
+            });
+        } catch (error) {
             console.error("Analysis error:", error);
-            setError(error.message || "Analysis failed");
+            addToast({
+                title: "Analysis Failed",
+                description: getErrorMessage(error),
+                variant: "error",
+            });
         } finally {
             setAnalyzing(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-            <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-                <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-                    <Link href="/" className="flex items-center gap-2">
-                        <Video className="h-8 w-8 text-primary" />
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            Ciousten
-                        </h1>
-                    </Link>
-                    <nav className="flex gap-4">
-                        <Link href="/annotate">
-                            <Button variant="ghost">Annotate</Button>
-                        </Link>
-                        <Link href="/analyze">
-                            <Button variant="default">Analyze</Button>
-                        </Link>
-                        <Link href="/reports">
-                            <Button variant="ghost">Reports</Button>
-                        </Link>
-                    </nav>
-                </div>
-            </header>
-
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
             <main className="container mx-auto px-4 py-8">
                 <div className="max-w-4xl mx-auto">
+                    <Breadcrumb />
+
                     <h2 className="text-3xl font-bold mb-2">AI Analysis</h2>
                     <p className="text-muted-foreground mb-8">
                         Generate insights and recommendations using OpenRouter LLMs
@@ -100,18 +93,22 @@ export default function AnalyzePage() {
                             <CardContent className="space-y-4">
                                 <div>
                                     <label className="text-sm font-medium mb-2 block">Select Project</label>
-                                    <select
-                                        value={selectedProject}
-                                        onChange={(e) => setSelectedProject(e.target.value)}
-                                        className="w-full px-3 py-2 border rounded-md bg-background"
-                                    >
-                                        <option value="">Choose a segmented project...</option>
-                                        {projects.map((project) => (
-                                            <option key={project.project_id} value={project.project_id}>
-                                                {project.video_filename} ({project.project_id.slice(0, 8)}...)
-                                            </option>
-                                        ))}
-                                    </select>
+                                    {loading ? (
+                                        <Skeleton className="h-10 w-full" />
+                                    ) : (
+                                        <select
+                                            value={selectedProject}
+                                            onChange={(e) => setSelectedProject(e.target.value)}
+                                            className="w-full px-3 py-2 border rounded-md bg-background"
+                                        >
+                                            <option value="">Choose a segmented project...</option>
+                                            {projects.map((project) => (
+                                                <option key={project.project_id} value={project.project_id}>
+                                                    {project.video_filename} ({project.project_id.slice(0, 8)}...)
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                 </div>
 
                                 <div>
@@ -159,19 +156,20 @@ export default function AnalyzePage() {
                             </CardContent>
                         </Card>
 
-                        {/* Error Card */}
-                        {error && (
-                            <Card className="border-destructive">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center gap-2 text-destructive">
-                                        <AlertCircle className="h-5 w-5" />
-                                        <p className="font-medium">{error}</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                        {/* Empty State */}
+                        {!loading && projects.length === 0 && (
+                            <EmptyState
+                                icon={Inbox}
+                                title="No segmented projects found"
+                                description="Please upload and segment a video first before running analysis"
+                                action={{
+                                    label: "Go to Annotate",
+                                    onClick: () => router.push("/annotate"),
+                                }}
+                            />
                         )}
 
-                        {/* Results Card */}
+                        {/* Results Cards */}
                         {analysis && (
                             <>
                                 <Card>
@@ -241,11 +239,9 @@ export default function AnalyzePage() {
                                 )}
 
                                 <div className="flex gap-3">
-                                    <Link href="/reports" className="flex-1">
-                                        <Button className="w-full">
-                                            Generate Reports →
-                                        </Button>
-                                    </Link>
+                                    <Button className="flex-1" onClick={() => router.push("/reports")}>
+                                        Generate Reports →
+                                    </Button>
                                 </div>
                             </>
                         )}
