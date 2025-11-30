@@ -1,0 +1,27 @@
+# Ciousten - Video Insights & Reports
+
+# Data and reports
+backend/data/
+backend/reports/
+backend/*.db
+
+# SAM2 model weights
+backend/sam_models/*.pt
+backend/sam_models/*.pth
+
+# Environment files
+backend/.env
+frontend/.env*
+
+# Dependencies
+backend/venv/
+frontend/node_modules/
+frontend/.next/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
