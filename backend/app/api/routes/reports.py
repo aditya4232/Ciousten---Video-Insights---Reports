@@ -179,6 +179,51 @@ async def download_video(
     )
 
 
+from app.core.export_engine import export_dataset
+
+@router.get("/reports/{project_id}/export/{format}")
+async def export_project_dataset(
+    project_id: str,
+    format: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Export dataset in YOLO or COCO format.
+    
+    Args:
+        project_id: Project identifier
+        format: 'yolo' or 'coco'
+        db: Database session
+    """
+    # Check project exists
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    if not project.segmentation_json_path:
+        raise HTTPException(status_code=400, detail="Segmentation data not found")
+        
+    try:
+        # Define output path
+        zip_filename = f"dataset_{project_id}_{format}.zip"
+        output_path = Path(settings.reports_dir) / "datasets" / zip_filename
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Generate dataset
+        zip_path = export_dataset(project_id, format, str(output_path))
+        
+        return FileResponse(
+            path=zip_path,
+            media_type="application/zip",
+            filename=zip_filename
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
 @router.get("/projects", response_model=List[ProjectSummary])
 async def list_projects(db: AsyncSession = Depends(get_db)):
     """

@@ -212,6 +212,24 @@ class ApiClient {
         return response.blob();
     }
 
+    async exportDataset(
+        projectId: string,
+        format: 'yolo' | 'coco'
+    ): Promise<Blob> {
+        const response = await fetch(
+            `${this.baseUrl}/reports/${projectId}/export/${format}`
+        );
+
+        if (!response.ok) {
+            throw {
+                message: 'Export failed',
+                status: response.status,
+            } as ApiError;
+        }
+
+        return response.blob();
+    }
+
     // Health Check
     async healthCheck(): Promise<{ status: string }> {
         return this.request('/health');

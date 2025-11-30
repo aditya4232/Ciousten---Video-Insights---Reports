@@ -1,5 +1,11 @@
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/loading-skeleton";
 import { useToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { EmptyState } from "@/components/ui/empty-state";
 import { api, Project, getErrorMessage } from "@/lib/api";
 import { Brain, Loader2, CheckCircle2, AlertCircle, Inbox, Settings2, Video } from "lucide-react";
 import { AnomalyTimeline } from "@/components/AnomalyTimeline";
@@ -87,6 +93,37 @@ export default function AnalyzePage() {
         if (videoRef.current) {
             videoRef.current.currentTime = timestamp;
             videoRef.current.play();
+        }
+    };
+
+    const [exporting, setExporting] = useState(false);
+
+    const handleExport = async (format: 'yolo' | 'coco') => {
+        if (!selectedProject) return;
+        setExporting(true);
+        try {
+            const blob = await api.exportDataset(selectedProject, format);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dataset_${selectedProject}_${format}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            addToast({
+                title: "Success",
+                description: `${format.toUpperCase()} dataset exported successfully`,
+                variant: "success",
+            });
+        } catch (error) {
+            addToast({
+                title: "Export Failed",
+                description: getErrorMessage(error),
+                variant: "error",
+            });
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -290,7 +327,17 @@ export default function AnalyzePage() {
                                     </Card>
                                 )}
 
-                                <div className="flex gap-3 justify-end">
+                                <div className="flex gap-3 justify-end items-center">
+                                    <div className="flex gap-2 mr-auto">
+                                        <Button variant="outline" size="sm" onClick={() => handleExport('yolo')} disabled={exporting}>
+                                            {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                            Export YOLO
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => handleExport('coco')} disabled={exporting}>
+                                            {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                            Export COCO
+                                        </Button>
+                                    </div>
                                     <Button size="lg" onClick={() => router.push("/reports")}>
                                         Generate Reports & Dataset Card →
                                     </Button>

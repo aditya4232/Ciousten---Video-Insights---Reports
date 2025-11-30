@@ -134,8 +134,8 @@ export default function Home() {
                             },
                             {
                                 icon: Zap,
-                                title: "Plugin System",
-                                description: "Extensible backend architecture allowing custom analysis modules.",
+                                title: "Dataset Export",
+                                description: "Export your segmented data to standard COCO and YOLO formats for training custom models.",
                                 color: "yellow",
                             },
                             {
