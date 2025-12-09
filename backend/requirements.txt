@@ -10,6 +10,7 @@ aiosqlite==0.19.0
 # AI/ML - Ultralytics will install compatible torch version
 opencv-python==4.9.0.80
 ultralytics==8.1.0
+supervision==0.18.0
 numpy==1.26.3
 pillow==10.2.0
 
