@@ -13,6 +13,7 @@ from datetime import datetime
 import uuid
 from app.config import settings
 from app.api.routes import upload, projects, segment, analyze, reports, sample
+from app.db import init_db
 
 # In-memory session storage (cleared on restart)
 active_sessions: Dict[str, dict] = {}
@@ -33,15 +34,22 @@ class SessionResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize database tables
+    print("🚀 Starting Ciousten backend...")
+    await init_db()
+    print("✅ Database initialized")
+    
     # Ensure directories exist
     Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
     Path(settings.reports_dir).mkdir(parents=True, exist_ok=True)
+    print("✅ Directories ready")
     
     yield
     
     # Shutdown - clear all sessions
     active_sessions.clear()
     print("👋 Shutting down Ciousten backend...")
+
 
 
 # Create FastAPI app
