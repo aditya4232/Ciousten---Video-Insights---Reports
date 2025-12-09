@@ -72,9 +72,13 @@ class ApiClient {
     private baseUrl: string;
 
     constructor(baseUrl?: string) {
-        // Use relative URL for Next.js rewrites (works in both dev and production)
-        // In production, the rewrite will proxy to the backend
-        this.baseUrl = baseUrl || '/api';
+        // In production, use the environment variable directly
+        // In development, use relative /api path (proxied by Next.js)
+        const envUrl = typeof window !== 'undefined'
+            ? process.env.NEXT_PUBLIC_API_URL
+            : process.env.NEXT_PUBLIC_API_URL;
+
+        this.baseUrl = baseUrl || (envUrl ? `${envUrl}/api` : '/api');
     }
 
     private async request<T>(
