@@ -7,7 +7,7 @@ services:
     name: ciousten-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    dockerContext: .
     region: oregon
     plan: free
     envVars:

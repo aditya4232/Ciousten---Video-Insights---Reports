@@ -11,8 +11,8 @@ from app.config import settings
 
 router = APIRouter()
 
-# Path relative to backend directory
-SAMPLE_VIDEO_PATH = Path("../sample/24541-343454486_small.mp4")
+# Path to sample video (absolute path works in Docker)
+SAMPLE_VIDEO_PATH = Path("/app/sample/24541-343454486_small.mp4")
 
 @router.post("/sample", response_model=VideoUploadResponse)
 async def create_sample_project(db: AsyncSession = Depends(get_db)):

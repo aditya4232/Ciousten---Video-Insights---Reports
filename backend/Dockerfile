@@ -15,13 +15,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY app ./app
+COPY backend/app ./app
+
+# Copy sample video
+COPY sample ./sample
 
 # Create necessary directories
 RUN mkdir -p data reports sam_models
