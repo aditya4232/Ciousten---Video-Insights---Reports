@@ -10,8 +10,8 @@ from pathlib import Path
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
-    # OpenRouter API
-    openrouter_api_key: str
+    # OpenRouter API (optional for CI, required at runtime for API calls)
+    openrouter_api_key: str = ""
     openrouter_default_model: str = "meta-llama/llama-3.2-11b-vision-instruct:free"
     openrouter_site_url: str = "https://ciousten.adityacuz.dev"
     openrouter_app_name: str = "Ciousten"
