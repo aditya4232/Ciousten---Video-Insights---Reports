@@ -235,22 +235,27 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
     Returns:
         List of project summaries
     """
-    result = await db.execute(select(Project).order_by(Project.created_at.desc()))
-    projects = result.scalars().all()
-    
-    summaries = []
-    for project in projects:
-        summaries.append(ProjectSummary(
-            project_id=project.id,
-            video_filename=project.video_filename,
-            status=project.status,
-            created_at=project.created_at,
-            has_segmentation=project.segmentation_json_path is not None,
-            has_analysis=project.analysis_json is not None,
-            has_reports=project.has_reports,
-            excel_path=f"/api/reports/{project.id}/download/excel" if project.excel_path else None,
-            pdf_path=f"/api/reports/{project.id}/download/pdf" if project.pdf_path else None,
-            annotated_video_path=f"/api/reports/{project.id}/video" if project.annotated_video_path else None
-        ))
-    
-    return summaries
+    try:
+        result = await db.execute(select(Project).order_by(Project.created_at.desc()))
+        projects = result.scalars().all()
+        
+        summaries = []
+        for project in projects:
+            summaries.append(ProjectSummary(
+                project_id=project.id,
+                video_filename=project.video_filename,
+                status=project.status,
+                created_at=project.created_at,
+                has_segmentation=project.segmentation_json_path is not None,
+                has_analysis=project.analysis_json is not None,
+                has_reports=project.has_reports,
+                excel_path=f"/api/reports/{project.id}/download/excel" if project.excel_path else None,
+                pdf_path=f"/api/reports/{project.id}/download/pdf" if project.pdf_path else None,
+                annotated_video_path=f"/api/reports/{project.id}/video" if project.annotated_video_path else None
+            ))
+        
+        return summaries
+    except Exception as e:
+        # Log error but return empty list instead of 500
+        print(f"Error fetching projects: {str(e)}")
+        return []
