@@ -5,10 +5,31 @@ Made by Aditya Shenvi @2025 (www.adityacuz.dev)
 """
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, Dict
+from datetime import datetime
+import uuid
 from app.config import settings
 from app.api.routes import upload, projects, segment, analyze, reports, sample
+
+# In-memory session storage (cleared on restart)
+active_sessions: Dict[str, dict] = {}
+
+class SessionCreate(BaseModel):
+    name: str
+    device: Optional[str] = "Unknown"
+    timezone: Optional[str] = "UTC"
+    user_agent: Optional[str] = None
+
+class SessionResponse(BaseModel):
+    session_id: str
+    name: str
+    device: str
+    timezone: str
+    created_at: str
+    message: str
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -18,7 +39,8 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # Shutdown
+    # Shutdown - clear all sessions
+    active_sessions.clear()
     print("👋 Shutting down Ciousten backend...")
 
 
@@ -30,18 +52,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware for Next.js frontend
+# CORS middleware - Allow all origins for public API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://frontend:3000",  # Docker service name
-        "*"  # Allow all origins for development
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,  # Must be False when using "*"
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Include Routers
@@ -69,6 +87,63 @@ async def health_check():
     return {"status": "healthy"}
 
 
+# Session Management Endpoints
+@app.post("/api/session", response_model=SessionResponse, tags=["Session"])
+async def create_session(session_data: SessionCreate, request: Request):
+    """Create a temporary session for the user."""
+    session_id = str(uuid.uuid4())
+    
+    session = {
+        "session_id": session_id,
+        "name": session_data.name,
+        "device": session_data.device,
+        "timezone": session_data.timezone,
+        "user_agent": session_data.user_agent or request.headers.get("user-agent", "Unknown"),
+        "ip": request.client.host if request.client else "Unknown",
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    
+    active_sessions[session_id] = session
+    
+    return SessionResponse(
+        session_id=session_id,
+        name=session_data.name,
+        device=session_data.device,
+        timezone=session_data.timezone,
+        created_at=session["created_at"],
+        message=f"Welcome, {session_data.name}! Session created."
+    )
+
+
+@app.get("/api/session/{session_id}", tags=["Session"])
+async def get_session(session_id: str):
+    """Get session info."""
+    if session_id in active_sessions:
+        return active_sessions[session_id]
+    return {"error": "Session not found", "valid": False}
+
+
+@app.delete("/api/session/{session_id}", tags=["Session"])
+async def delete_session(session_id: str):
+    """Delete session when user leaves."""
+    if session_id in active_sessions:
+        name = active_sessions[session_id]["name"]
+        del active_sessions[session_id]
+        return {"message": f"Goodbye, {name}! Session deleted.", "success": True}
+    return {"message": "Session not found", "success": False}
+
+
+@app.get("/api/sessions/active", tags=["Session"])
+async def get_active_sessions():
+    """Get count of active sessions."""
+    return {
+        "active_sessions": len(active_sessions),
+        "sessions": [{"name": s["name"], "device": s["device"], "timezone": s["timezone"]} 
+                     for s in active_sessions.values()]
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
