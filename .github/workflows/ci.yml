@@ -74,7 +74,7 @@ jobs:
           sys.path.insert(0, '.')
           from app.config import settings
           print('✅ Config module loads successfully')
-          from app.schemas import ProjectResponse
+          from app.schemas import ProjectSummary
           print('✅ Schemas module loads successfully')
           from app.db import get_db
           print('✅ Database module loads successfully')
