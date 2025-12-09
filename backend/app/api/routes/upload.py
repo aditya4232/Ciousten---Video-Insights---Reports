@@ -2,7 +2,7 @@
 Video upload API route.
 """
 
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pathlib import Path
@@ -11,19 +11,25 @@ import shutil
 from app.db import get_db, Project
 from app.schemas import VideoUploadResponse, ProjectStatus
 from app.config import settings
+from app.rate_limit import limiter, RATE_LIMITS
 
 router = APIRouter()
 
 
 @router.post("/upload-video", response_model=VideoUploadResponse)
+@limiter.limit(RATE_LIMITS["upload"])  # Strict limit: 5 uploads per hour
 async def upload_video(
+    request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Upload a video file and create a new project.
     
+    **Rate Limited**: 5 uploads per hour per IP to prevent abuse.
+    
     Args:
+        request: HTTP request (for rate limiting)
         file: Video file upload
         db: Database session
     

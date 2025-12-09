@@ -11,7 +11,11 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 from datetime import datetime
 import uuid
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from app.config import settings
+from app.rate_limit import limiter, RATE_LIMITS
 from app.api.routes import upload, projects, segment, analyze, reports, sample
 from app.db import init_db
 
@@ -60,6 +64,22 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Add rate limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Security: Request size limit middleware
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    """Limit request body size to prevent memory exhaustion."""
+    max_size = 550 * 1024 * 1024  # 550MB (slightly above max video size)
+    content_length = request.headers.get("content-length")
+    
+    if content_length and int(content_length) > max_size:
+        return {"detail": "Request too large. Maximum size: 500MB"}
+    
+    return await call_next(request)
+
 # CORS middleware - Allow all origins for public API
 app.add_middleware(
     CORSMiddleware,
@@ -69,6 +89,9 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Add SlowAPI middleware for rate limiting
+app.add_middleware(SlowAPIMiddleware)
 
 # Include Routers
 app.include_router(upload.router, prefix="/api", tags=["Upload"])
@@ -97,6 +120,7 @@ async def health_check():
 
 # Session Management Endpoints
 @app.post("/api/session", response_model=SessionResponse, tags=["Session"])
+@limiter.limit(RATE_LIMITS["session"])
 async def create_session(session_data: SessionCreate, request: Request):
     """Create a temporary session for the user."""
     session_id = str(uuid.uuid4())

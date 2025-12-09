@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import shutil
 import uuid
@@ -8,6 +8,7 @@ from pathlib import Path
 from app.db import get_db, Project
 from app.schemas import VideoUploadResponse, ProjectStatus
 from app.config import settings
+from app.rate_limit import limiter, RATE_LIMITS
 
 router = APIRouter()
 
@@ -15,9 +16,12 @@ router = APIRouter()
 SAMPLE_VIDEO_PATH = Path("/app/sample/24541-343454486_small.mp4")
 
 @router.post("/sample", response_model=VideoUploadResponse)
-async def create_sample_project(db: AsyncSession = Depends(get_db)):
+@limiter.limit(RATE_LIMITS["sample"])  # Limit: 10 sample loads per hour
+async def create_sample_project(request: Request, db: AsyncSession = Depends(get_db)):
     """
     Create a new project using the pre-loaded sample video.
+    
+    **Rate Limited**: 10 sample loads per hour per IP to prevent abuse.
     """
     if not SAMPLE_VIDEO_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Sample video not found at {SAMPLE_VIDEO_PATH.absolute()}")
