@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Data and generated files
+data/
+reports/
+
+# Environment
+.env
+.env.local
+.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Model files (download in container)
+sam_models/*.pt
+sam_models/*.pth
+
+# Tests
+tests/
+__tests__/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

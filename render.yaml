@@ -1,0 +1,39 @@
+# Render.com Blueprint Specification
+# Deploy backend and frontend services
+
+services:
+  # Backend API Service
+  - type: web
+    name: ciousten-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # Frontend Service (Static Site or Web Service)
+  - type: web
+    name: ciousten-frontend
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/out
+    pullRequestPreviewsEnabled: true
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: ciousten-api
+          property: host
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY

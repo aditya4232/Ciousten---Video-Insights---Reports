@@ -71,8 +71,10 @@ export interface ApiError {
 class ApiClient {
     private baseUrl: string;
 
-    constructor(baseUrl: string = 'http://localhost:8000/api') {
-        this.baseUrl = baseUrl;
+    constructor(baseUrl?: string) {
+        // Use relative URL for Next.js rewrites (works in both dev and production)
+        // In production, the rewrite will proxy to the backend
+        this.baseUrl = baseUrl || '/api';
     }
 
     private async request<T>(

@@ -1,8 +1,15 @@
 # Ciousten – Video Insights & Reports
 
+[![CI/CD Pipeline](https://github.com/aditya4232/Ciousten---Video-Insights---Reports/actions/workflows/ci.yml/badge.svg)](https://github.com/aditya4232/Ciousten---Video-Insights---Reports/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Deploy to Vercel](https://img.shields.io/badge/Deploy-Vercel-black)](https://vercel.com/new)
+[![Deploy to Railway](https://img.shields.io/badge/Deploy-Railway-purple)](https://railway.app/new)
+
 **Segment, understand, and report on videos with SAM2 + OpenRouter**
 
 Made by [Aditya Shenvi](https://www.adityacuz.dev) @2025
+
+📚 **[Deployment Guide](DEPLOYMENT.md)** | 🐳 **[Docker Setup](docker-compose.yml)** | 🤝 **[Contributing](CONTRIBUTING.md)**
 
 ---
 
