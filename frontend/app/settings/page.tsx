@@ -58,8 +58,9 @@ export default function SettingsPage() {
     const testBackendConnection = async () => {
         setTestResults({ backend: "testing", health: "idle", api: "idle", message: "Testing backend connection..." });
 
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
         try {
-            const response = await fetch("http://localhost:8000", { method: "GET" });
+            const response = await fetch(apiUrl, { method: "GET" });
             if (response.ok) {
                 const data = await response.json();
                 setTestResults({ backend: "success", health: "idle", api: "idle", message: `Backend connected! ${data.message || ""}` });
@@ -74,8 +75,9 @@ export default function SettingsPage() {
     const testHealthCheck = async () => {
         setTestResults((prev) => ({ ...prev, health: "testing", message: "Checking backend health..." }));
 
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
         try {
-            const response = await fetch("http://localhost:8000/health", { method: "GET" });
+            const response = await fetch(`${apiUrl}/health`, { method: "GET" });
             if (response.ok) {
                 const data = await response.json();
                 setTestResults((prev) => ({ ...prev, health: "success", message: `Health check passed! Status: ${data.status}` }));
@@ -90,8 +92,9 @@ export default function SettingsPage() {
     const testApiEndpoints = async () => {
         setTestResults((prev) => ({ ...prev, api: "testing", message: "Testing API endpoints..." }));
 
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
         try {
-            const response = await fetch("http://localhost:8000/api/projects", { method: "GET" });
+            const response = await fetch(`${apiUrl}/api/projects`, { method: "GET" });
             if (response.ok) {
                 const data = await response.json();
                 setTestResults((prev) => ({ ...prev, api: "success", message: `API working! Found ${data.length} projects.` }));
@@ -442,8 +445,8 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
                                     <div className="text-muted-foreground">
-                                        <p>Backend should be accessible at: <strong>http://localhost:8000</strong></p>
-                                        <p>API documentation: <strong>http://localhost:8000/docs</strong></p>
+                                        <p>Backend URL: <strong>{process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}</strong></p>
+                                        <p>API documentation: <strong>{process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/docs</strong></p>
                                     </div>
                                 </CardContent>
                             </Card>

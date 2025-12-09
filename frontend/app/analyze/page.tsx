@@ -254,7 +254,7 @@ export default function AnalyzePage() {
                                                     ref={videoRef}
                                                     controls
                                                     className="w-full rounded-lg border bg-black aspect-video"
-                                                    src={`http://localhost:8000${projects.find(p => p.project_id === selectedProject)?.annotated_video_path}`}
+                                                    src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${projects.find(p => p.project_id === selectedProject)?.annotated_video_path}`}
                                                 >
                                                     Your browser does not support the video tag.
                                                 </video>
