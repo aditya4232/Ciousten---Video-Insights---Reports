@@ -15,6 +15,7 @@ services:
       - ./backend/.env
     environment:
       - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=development
     networks:
       - ciousten-network
     restart: unless-stopped

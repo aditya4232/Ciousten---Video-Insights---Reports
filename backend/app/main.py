@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from app.config import settings
 from app.rate_limit import limiter, RATE_LIMITS
-from app.api.routes import upload, projects, segment, analyze, reports, sample
+from app.api.routes import upload, projects, segment, analyze, reports, sample, stats, websocket, export
 from app.db import init_db
 
 # In-memory session storage (cleared on restart)
@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Ciousten API",
     description="Video Insights & Reports - Made by Aditya Shenvi @2025",
-    version="1.0.0",
+    version="1.2.0",
     lifespan=lifespan
 )
 
@@ -93,6 +93,10 @@ app.add_middleware(
 # Add SlowAPI middleware for rate limiting
 app.add_middleware(SlowAPIMiddleware)
 
+# Add Performance monitoring middleware
+from app.middleware.performance import PerformanceMiddleware
+app.add_middleware(PerformanceMiddleware)
+
 # Include Routers
 app.include_router(upload.router, prefix="/api", tags=["Upload"])
 app.include_router(projects.router, prefix="/api", tags=["Projects"])
@@ -100,22 +104,72 @@ app.include_router(segment.router, prefix="/api", tags=["Segmentation"])
 app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
 app.include_router(reports.router, prefix="/api", tags=["Reports"])
 app.include_router(sample.router, prefix="/api", tags=["Sample"])
+app.include_router(stats.router, prefix="/api", tags=["Statistics"])
+app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
+app.include_router(export.router, prefix="/api", tags=["Export"])
 
 @app.get("/")
 async def root():
     return {
         "message": "Ciousten - Video Insights & Reports API",
-        "version": "1.0.0",
+        "version": "1.2.0",
+        "status": "production",
         "author": "Aditya Shenvi @2025",
         "website": "www.adityacuz.dev",
-        "docs": "/docs"
+        "docs": "/docs",
+        "health": "/health"
     }
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy"}
+    """Enhanced health check endpoint with system metrics."""
+    import psutil
+    from pathlib import Path
+    import os
+    
+    # Get system metrics
+    cpu_percent = psutil.cpu_percent(interval=0.1)
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    
+    # Check database
+    db_healthy = True
+    try:
+        from app.db import SessionLocal
+        async with SessionLocal() as session:
+            await session.execute("SELECT 1")
+    except Exception:
+        db_healthy = False
+    
+    # Check directories
+    data_dir_exists = Path(settings.data_dir).exists()
+    reports_dir_exists = Path(settings.reports_dir).exists()
+    
+    # Calculate uptime (simplified - would need startup time tracking)
+    uptime_seconds = 0  # Placeholder
+    
+    return {
+        "status": "healthy" if db_healthy else "degraded",
+        "version": "1.2.0",
+        "timestamp": datetime.utcnow().isoformat(),
+        "system": {
+            "cpu_percent": round(cpu_percent, 2),
+            "memory_percent": round(memory.percent, 2),
+            "memory_available_mb": round(memory.available / (1024 * 1024), 2),
+            "disk_percent": round(disk.percent, 2),
+            "disk_free_gb": round(disk.free / (1024 * 1024 * 1024), 2)
+        },
+        "services": {
+            "database": "healthy" if db_healthy else "unhealthy",
+            "data_directory": "ok" if data_dir_exists else "missing",
+            "reports_directory": "ok" if reports_dir_exists else "missing"
+        },
+        "sessions": {
+            "active_count": len(active_sessions)
+        },
+        "environment": os.getenv("ENVIRONMENT", "production")
+    }
 
 
 # Session Management Endpoints
