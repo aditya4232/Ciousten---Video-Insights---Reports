@@ -6,24 +6,24 @@ import { Activity, Server, Database, HardDrive, Cpu, Users } from "lucide-react"
 
 interface SystemHealth {
     status: string;
-    version: string;
-    timestamp: string;
-    system: {
-        cpu_percent: number;
-        memory_percent: number;
-        memory_available_mb: number;
-        disk_percent: number;
-        disk_free_gb: number;
+    version?: string;
+    timestamp?: string;
+    system?: {
+        cpu_percent?: number;
+        memory_percent?: number;
+        memory_available_mb?: number;
+        disk_percent?: number;
+        disk_free_gb?: number;
     };
-    services: {
-        database: string;
-        data_directory: string;
-        reports_directory: string;
+    services?: {
+        database?: string;
+        data_directory?: string;
+        reports_directory?: string;
     };
-    sessions: {
-        active_count: number;
+    sessions?: {
+        active_count?: number;
     };
-    environment: string;
+    environment?: string;
 }
 
 export function SystemHealthWidget() {
@@ -47,7 +47,7 @@ export function SystemHealthWidget() {
             setError(null);
         } catch (err) {
             setError("Unable to fetch system health");
-            console.error(err);
+            console.error("Health fetch error:", err);
         } finally {
             setLoading(false);
         }
@@ -79,23 +79,40 @@ export function SystemHealthWidget() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-sm text-orange-600">{error}</div>
+                    <div className="text-sm text-orange-600">{error || "No data available"}</div>
+                    <button
+                        onClick={fetchHealth}
+                        className="mt-2 text-xs text-blue-600 hover:underline"
+                    >
+                        Retry
+                    </button>
                 </CardContent>
             </Card>
         );
     }
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status?: string) => {
+        if (!status) return "text-gray-600 dark:text-gray-400";
         if (status === "healthy" || status === "ok") return "text-green-600 dark:text-green-400";
         if (status === "degraded") return "text-orange-600 dark:text-orange-400";
         return "text-red-600 dark:text-red-400";
     };
 
-    const getPercentageColor = (percent: number) => {
+    const getPercentageColor = (percent?: number) => {
+        if (!percent) return "text-gray-600 dark:text-gray-400";
         if (percent < 60) return "text-green-600 dark:text-green-400";
         if (percent < 80) return "text-orange-600 dark:text-orange-400";
         return "text-red-600 dark:text-red-400";
     };
+
+    // Safe accessors with defaults
+    const cpuPercent = health.system?.cpu_percent ?? 0;
+    const memoryPercent = health.system?.memory_percent ?? 0;
+    const memoryAvailable = health.system?.memory_available_mb ?? 0;
+    const diskPercent = health.system?.disk_percent ?? 0;
+    const diskFree = health.system?.disk_free_gb ?? 0;
+    const dbStatus = health.services?.database ?? "unknown";
+    const activeCount = health.sessions?.active_count ?? 0;
 
     return (
         <Card className={health.status === "healthy" ? "border-green-200 dark:border-green-800" : "border-orange-200 dark:border-orange-800"}>
@@ -105,7 +122,8 @@ export function SystemHealthWidget() {
                     System Health
                 </CardTitle>
                 <CardDescription>
-                    Version {health.version} • {health.environment}
+                    {health.version && `Version ${health.version}`}
+                    {health.environment && ` • ${health.environment}`}
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -113,70 +131,76 @@ export function SystemHealthWidget() {
                 <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Status</span>
                     <span className={`text-sm font-semibold uppercase ${getStatusColor(health.status)}`}>
-                        {health.status}
+                        {health.status || "unknown"}
                     </span>
                 </div>
 
                 {/* System Metrics */}
-                <div className="space-y-3 pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Cpu className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">CPU</span>
+                {health.system && (
+                    <div className="space-y-3 pt-2 border-t">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Cpu className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">CPU</span>
+                            </div>
+                            <span className={`text-sm font-medium ${getPercentageColor(cpuPercent)}`}>
+                                {cpuPercent.toFixed(1)}%
+                            </span>
                         </div>
-                        <span className={`text-sm font-medium ${getPercentageColor(health.system.cpu_percent)}`}>
-                            {health.system.cpu_percent}%
-                        </span>
-                    </div>
 
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Server className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">Memory</span>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Server className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">Memory</span>
+                            </div>
+                            <span className={`text-sm font-medium ${getPercentageColor(memoryPercent)}`}>
+                                {memoryPercent.toFixed(1)}% ({memoryAvailable.toFixed(0)} MB free)
+                            </span>
                         </div>
-                        <span className={`text-sm font-medium ${getPercentageColor(health.system.memory_percent)}`}>
-                            {health.system.memory_percent}% ({health.system.memory_available_mb.toFixed(0)} MB free)
-                        </span>
-                    </div>
 
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <HardDrive className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">Disk</span>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <HardDrive className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">Disk</span>
+                            </div>
+                            <span className={`text-sm font-medium ${getPercentageColor(diskPercent)}`}>
+                                {diskPercent.toFixed(1)}% ({diskFree.toFixed(1)} GB free)
+                            </span>
                         </div>
-                        <span className={`text-sm font-medium ${getPercentageColor(health.system.disk_percent)}`}>
-                            {health.system.disk_percent}% ({health.system.disk_free_gb.toFixed(1)} GB free)
-                        </span>
                     </div>
-                </div>
+                )}
 
                 {/* Services */}
-                <div className="space-y-2 pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Database className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">Database</span>
+                {health.services && (
+                    <div className="space-y-2 pt-2 border-t">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Database className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">Database</span>
+                            </div>
+                            <span className={`text-xs font-medium uppercase ${getStatusColor(dbStatus)}`}>
+                                {dbStatus}
+                            </span>
                         </div>
-                        <span className={`text-xs font-medium uppercase ${getStatusColor(health.services.database)}`}>
-                            {health.services.database}
-                        </span>
                     </div>
-                </div>
+                )}
 
                 {/* Active Sessions */}
-                <div className="flex items-center justify-between pt-2 border-t">
-                    <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Active Sessions</span>
+                {health.sessions && (
+                    <div className="flex items-center justify-between pt-2 border-t">
+                        <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">Active Sessions</span>
+                        </div>
+                        <span className="text-sm font-medium">
+                            {activeCount}
+                        </span>
                     </div>
-                    <span className="text-sm font-medium">
-                        {health.sessions.active_count}
-                    </span>
-                </div>
+                )}
 
                 {/* Last Updated */}
                 <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-                    Last updated: {new Date(health.timestamp).toLocaleTimeString()}
+                    Last updated: {health.timestamp ? new Date(health.timestamp).toLocaleTimeString() : "N/A"}
                 </div>
             </CardContent>
         </Card>
