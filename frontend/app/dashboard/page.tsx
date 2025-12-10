@@ -8,6 +8,7 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatCardSkeleton, ListSkeleton } from "@/components/ui/loading-skeleton";
 import { useToast } from "@/components/ui/toast";
+import { SystemHealthWidget } from "@/components/ui/system-health";
 import { api, Project, getErrorMessage } from "@/lib/api";
 import {
     Video,
@@ -18,9 +19,12 @@ import {
     Clock,
     CheckCircle2,
     ArrowRight,
-    Inbox
+    Inbox,
+    Zap,
+    Activity
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Toaster } from "react-hot-toast";
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -223,47 +227,59 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Recent Activity */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Recent Activity</CardTitle>
-                        <CardDescription>Your latest video processing activities</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {loading ? (
-                            <ListSkeleton count={3} />
-                        ) : projects.length === 0 ? (
-                            <EmptyState
-                                icon={Inbox}
-                                title="No projects yet"
-                                description="Start by uploading a video to begin your analysis journey"
-                                action={{
-                                    label: "Upload Video",
-                                    onClick: () => router.push("/annotate"),
-                                }}
-                            />
-                        ) : (
-                            <div className="space-y-4">
-                                {projects.slice(0, 3).map((project, i) => (
-                                    <div key={project.project_id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                            <CheckCircle2 className="h-5 w-5 text-primary" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="font-medium">{project.video_filename}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                Status: {project.status} • {new Date(project.created_at).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                        <Button variant="ghost" size="sm" onClick={() => router.push("/analyze")}>
-                                            View
-                                        </Button>
+                <div className="grid gap-6 md:grid-cols-3">
+                    <div className="md:col-span-2">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Recent Activity</CardTitle>
+                                <CardDescription>Your latest video processing activities</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {loading ? (
+                                    <ListSkeleton count={3} />
+                                ) : projects.length === 0 ? (
+                                    <EmptyState
+                                        icon={Inbox}
+                                        title="No projects yet"
+                                        description="Start by uploading a video to begin your analysis journey"
+                                        action={{
+                                            label: "Upload Video",
+                                            onClick: () => router.push("/annotate"),
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="space-y-4">
+                                        {projects.slice(0, 3).map((project, i) => (
+                                            <div key={project.project_id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium">{project.video_filename}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Status: {project.status} • {new Date(project.created_at).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                                <Button variant="ghost" size="sm" onClick={() => router.push("/analyze")}>
+                                                    View
+                                                </Button>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* System Health Widget */}
+                    <div>
+                        <SystemHealthWidget />
+                    </div>
+                </div>
             </div>
+
+            {/* Toast Notifications */}
+            <Toaster position="top-right" />
         </div>
     );
 }
