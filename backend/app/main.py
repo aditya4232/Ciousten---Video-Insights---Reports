@@ -16,7 +16,10 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from app.config import settings
 from app.rate_limit import limiter, RATE_LIMITS
-from app.api.routes import upload, projects, segment, analyze, reports, sample, stats, websocket, export
+from app.api.routes import (
+    upload, projects, segment, analyze, reports, sample, stats, 
+    websocket, export, url_video, batch, compare, api_keys
+)
 from app.db import init_db
 
 # In-memory session storage (cleared on restart)
@@ -60,7 +63,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Ciousten API",
     description="Video Insights & Reports - Made by Aditya Shenvi @2025",
-    version="1.2.0",
+    version="1.3.0",
     lifespan=lifespan
 )
 
@@ -108,16 +111,28 @@ app.include_router(stats.router, prefix="/api", tags=["Statistics"])
 app.include_router(websocket.router, prefix="/api", tags=["WebSocket"])
 app.include_router(export.router, prefix="/api", tags=["Export"])
 
+# V1.3 Feature Routers
+app.include_router(url_video.router, prefix="/api", tags=["URL Video"])
+app.include_router(batch.router, prefix="/api", tags=["Batch Processing"])
+app.include_router(compare.router, prefix="/api", tags=["Video Comparison"])
+app.include_router(api_keys.router, prefix="/api", tags=["API Keys"])
+
 @app.get("/")
 async def root():
     return {
         "message": "Ciousten - Video Insights & Reports API",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "status": "production",
         "author": "Aditya Shenvi @2025",
         "website": "www.adityacuz.dev",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "new_in_v1_3": [
+            "URL Video Processing (YouTube support)",
+            "Batch Upload (up to 10 videos)",
+            "Video Comparison",
+            "API Key Management"
+        ]
     }
 
 
