@@ -71,6 +71,16 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# CORS middleware - MUST BE FIRST! Allow all origins for public API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,  # Must be False when using "*"
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
 # Security: Request size limit middleware
 @app.middleware("http")
 async def limit_request_size(request: Request, call_next):
@@ -82,16 +92,6 @@ async def limit_request_size(request: Request, call_next):
         return {"detail": "Request too large. Maximum size: 500MB"}
     
     return await call_next(request)
-
-# CORS middleware - Allow all origins for public API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,  # Must be False when using "*"
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
 
 # Add SlowAPI middleware for rate limiting
 app.add_middleware(SlowAPIMiddleware)
