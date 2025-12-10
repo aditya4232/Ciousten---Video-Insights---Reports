@@ -1,5 +1,6 @@
 # Render.com Blueprint Specification
 # Deploy backend and frontend services
+# Ciousten V1.3 - Production Configuration
 
 services:
   # Backend API Service
@@ -8,34 +9,82 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: ./backend
-    region: oregon
+    region: oregon  # Choose closest to your users
     plan: free
+    
+    # Resource Configuration
+    disk:
+      name: ciousten-data
+      mountPath: /app/data
+      sizeGB: 1  # Free tier limit
+    
+    # Environment Variables
     envVars:
       - key: PORT
         value: 8000
       - key: OPENROUTER_API_KEY
-        sync: false
+        sync: false  # Set in Render dashboard
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: ENVIRONMENT
         value: "production"
+      - key: DATA_DIR
+        value: "/app/data"
+      - key: REPORTS_DIR
+        value: "/app/reports"
+      - key: LOG_LEVEL
+        value: "INFO"
+    
+    # Health Check Configuration
     healthCheckPath: /health
+    
+    # Auto Deploy
     autoDeploy: true
+    
+    # Build Configuration
+    buildFilter:
+      paths:
+        - backend/**
+        - render.yaml
 
-  # Frontend Service (Static Site or Web Service)
+  # Frontend Service (Static Site)
   - type: web
     name: ciousten-frontend
     runtime: static
     buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: ./frontend/out
     pullRequestPreviewsEnabled: true
+    
+    # Environment Variables
     envVars:
       - key: NEXT_PUBLIC_API_URL
         fromService:
           type: web
           name: ciousten-api
           property: host
+      - key: NODE_ENV
+        value: production
+    
+    # Security Headers
     headers:
       - path: /*
         name: X-Frame-Options
         value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
+    
+    # Auto Deploy
+    autoDeploy: true
+    
+    # Build Configuration
+    buildFilter:
+      paths:
+        - frontend/**
+        - render.yaml
